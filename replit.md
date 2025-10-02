@@ -24,8 +24,10 @@ The application uses a traditional multi-page architecture where the server rend
 
 **Key Components**:
 - Role-specific dashboard templates (student, parent, warden, security)
-- Login page with role selection
+- Login page with role selection and modern animated design
 - Form-based interactions for gatepass applications and approvals
+- Custom CSS with smooth animations (fadeInUp, slideIn), gradient backgrounds, and interactive button effects
+- Modern card-based layouts with shadow effects and hover animations
 
 ### Backend Architecture
 
@@ -107,6 +109,7 @@ The application uses a traditional multi-page architecture where the server rend
 
 **Frontend**:
 - `Bootstrap 5.1.3` (via CDN): CSS framework for responsive UI components
+- Custom CSS (`static/css/style.css`): Modern animations, gradients, and visual effects
 
 ### Environment Variables
 
