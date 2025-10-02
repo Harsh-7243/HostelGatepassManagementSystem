@@ -140,28 +140,20 @@ def apply_gatepass():
         duration_hours = int(request.form['duration_hours'])
         destination = request.form['destination']
         purpose = request.form['purpose']
+        parent_email = request.form['parent_email']
         
         conn = get_db_connection()
         cur = conn.cursor()
-        
-        cur.execute('SELECT parent_id FROM student_parent_links WHERE student_id = %s', (current_user.id,))
-        parent_result = cur.fetchone()
-        if not parent_result:
-            flash('No parent linked to your account')
-            cur.close()
-            conn.close()
-            return redirect(url_for('student_dashboard'))
-        parent_id = parent_result[0]
         
         created_at = datetime.now()
         expiry_timestamp = created_at + timedelta(hours=1)
         
         cur.execute('''
             INSERT INTO gatepass_requests 
-            (student_id, parent_id, date_time_out, duration_hours, destination, purpose, created_at, expiry_timestamp)
+            (student_id, parent_email, date_time_out, duration_hours, destination, purpose, created_at, expiry_timestamp)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING request_id
-        ''', (current_user.id, parent_id, date_time_out, duration_hours, destination, purpose, created_at, expiry_timestamp))
+        ''', (current_user.id, parent_email, date_time_out, duration_hours, destination, purpose, created_at, expiry_timestamp))
         
         request_result = cur.fetchone()
         request_id = request_result[0] if request_result else None
@@ -169,7 +161,7 @@ def apply_gatepass():
         cur.close()
         conn.close()
         
-        print(f"Notification sent to Parent (ID: {parent_id}) with approval link: /parent/approve/{request_id} and rejection link: /parent/reject/{request_id}")
+        print(f"Notification sent to Parent (Email: {parent_email}) with approval link: /parent/approve/{request_id} and rejection link: /parent/reject/{request_id}")
         
         flash('Gatepass request submitted successfully!')
         return redirect(url_for('student_dashboard'))
@@ -186,24 +178,33 @@ def parent_dashboard():
     conn = get_db_connection()
     cur = conn.cursor()
     
+    cur.execute('SELECT email FROM parents WHERE parent_id = %s', (current_user.id,))
+    parent_result = cur.fetchone()
+    if not parent_result:
+        flash('Parent email not found')
+        cur.close()
+        conn.close()
+        return redirect(url_for('login'))
+    
+    parent_email = parent_result[0]
     now = datetime.now()
     
     cur.execute('''
         UPDATE gatepass_requests
         SET parent_approval_status = 'Expired'
-        WHERE parent_id = %s 
+        WHERE parent_email = %s 
         AND parent_approval_status = 'Pending'
         AND created_at + INTERVAL '1 hour' < %s
-    ''', (current_user.id, now))
+    ''', (parent_email, now))
     
     cur.execute('''
         SELECT r.request_id, s.name, s.student_id, r.date_time_out, r.duration_hours, 
                r.destination, r.purpose, r.parent_approval_status, r.created_at, r.expiry_timestamp
         FROM gatepass_requests r
         JOIN students s ON r.student_id = s.student_id
-        WHERE r.parent_id = %s
+        WHERE r.parent_email = %s
         ORDER BY r.created_at DESC
-    ''', (current_user.id,))
+    ''', (parent_email,))
     
     requests = cur.fetchall()
     conn.commit()
@@ -222,11 +223,15 @@ def approve_request(request_id):
     conn = get_db_connection()
     cur = conn.cursor()
     
+    cur.execute('SELECT email FROM parents WHERE parent_id = %s', (current_user.id,))
+    parent_result = cur.fetchone()
+    parent_email = parent_result[0] if parent_result else None
+    
     cur.execute('''
         UPDATE gatepass_requests
         SET parent_approval_status = 'Approved', parent_approval_timestamp = %s
-        WHERE request_id = %s AND parent_id = %s AND parent_approval_status = 'Pending'
-    ''', (datetime.now(), request_id, current_user.id))
+        WHERE request_id = %s AND parent_email = %s AND parent_approval_status = 'Pending'
+    ''', (datetime.now(), request_id, parent_email))
     
     conn.commit()
     cur.close()
@@ -245,11 +250,15 @@ def reject_request(request_id):
     conn = get_db_connection()
     cur = conn.cursor()
     
+    cur.execute('SELECT email FROM parents WHERE parent_id = %s', (current_user.id,))
+    parent_result = cur.fetchone()
+    parent_email = parent_result[0] if parent_result else None
+    
     cur.execute('''
         UPDATE gatepass_requests
         SET parent_approval_status = 'Rejected', parent_approval_timestamp = %s
-        WHERE request_id = %s AND parent_id = %s AND parent_approval_status = 'Pending'
-    ''', (datetime.now(), request_id, current_user.id))
+        WHERE request_id = %s AND parent_email = %s AND parent_approval_status = 'Pending'
+    ''', (datetime.now(), request_id, parent_email))
     
     conn.commit()
     cur.close()

@@ -10,6 +10,7 @@ def init_database():
     cur = conn.cursor()
     
     cur.execute('DROP TABLE IF EXISTS gatepass_requests CASCADE')
+    cur.execute('DROP TABLE IF EXISTS student_parent_links CASCADE')
     cur.execute('DROP TABLE IF EXISTS students CASCADE')
     cur.execute('DROP TABLE IF EXISTS parents CASCADE')
     cur.execute('DROP TABLE IF EXISTS wardens CASCADE')
@@ -57,7 +58,7 @@ def init_database():
         CREATE TABLE gatepass_requests (
             request_id SERIAL PRIMARY KEY,
             student_id VARCHAR(50) REFERENCES students(student_id),
-            parent_id VARCHAR(50) REFERENCES parents(parent_id),
+            parent_email VARCHAR(100) NOT NULL,
             date_time_out TIMESTAMP NOT NULL,
             duration_hours INTEGER NOT NULL,
             destination VARCHAR(200) NOT NULL,
@@ -95,20 +96,6 @@ def init_database():
         ('SEC001', 'Guard Anderson', %s, 'Day'),
         ('SEC002', 'Guard Brown', %s, 'Night')
     ''', (password_hash, password_hash))
-    
-    cur.execute('''
-        CREATE TABLE student_parent_links (
-            student_id VARCHAR(50) REFERENCES students(student_id),
-            parent_id VARCHAR(50) REFERENCES parents(parent_id),
-            PRIMARY KEY (student_id, parent_id)
-        )
-    ''')
-    
-    cur.execute('''
-        INSERT INTO student_parent_links (student_id, parent_id) VALUES
-        ('STU001', 'PAR001'),
-        ('STU002', 'PAR002')
-    ''')
     
     conn.commit()
     cur.close()
