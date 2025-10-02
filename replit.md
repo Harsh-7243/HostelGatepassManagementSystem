@@ -57,7 +57,7 @@ The application uses a traditional multi-page architecture where the server rend
 
 **Schema Design**:
 - **Users**: Separate tables for each role (students, parents, wardens, security_guards)
-- **Core Table**: gatepass_requests with foreign keys to student and parent
+- **Core Table**: gatepass_requests with parent_email field for dynamic parent notification
 - **Status Fields**: Uses string-based status tracking (not true ENUMs due to PostgreSQL compatibility)
   - `parent_approval_status`: 'Pending', 'Approved', 'Rejected'
   - `warden_status`: 'Open', 'Closed'
@@ -66,7 +66,7 @@ The application uses a traditional multi-page architecture where the server rend
 **Key Fields**:
 - Timestamp fields for request creation, approval, and expiry (1-hour expiry window)
 - Duration tracking in hours
-- Foreign key relationships establishing student-parent linkage
+- `parent_email` field: Students enter parent email when creating gatepass, enabling flexible parent notification
 
 **Rationale**:
 - PostgreSQL provides reliability and ACID compliance for approval workflows
@@ -77,12 +77,13 @@ The application uses a traditional multi-page architecture where the server rend
 ### Business Logic
 
 **Gatepass Workflow**:
-1. Student creates request → Sets expiry to 1 hour from creation
-2. Parent receives "simulated notification" (logged message with approval/rejection links)
-3. Parent approves/rejects before expiry
-4. Warden views all approved requests for oversight
-5. Security guard marks student as Out when leaving, In when returning
-6. Warden can close completed requests
+1. Student creates request and enters parent email → Sets expiry to 1 hour from creation
+2. Parent with matching email receives "simulated notification" (logged message with approval/rejection links)
+3. Parent logs in and sees requests sent to their email address
+4. Parent approves/rejects before expiry
+5. Warden views all approved requests for oversight
+6. Security guard marks student as Out when leaving, In when returning
+7. Warden can close completed requests
 
 **Expiry Mechanism**:
 - Requests have a 1-hour approval window
@@ -91,7 +92,8 @@ The application uses a traditional multi-page architecture where the server rend
 
 **Access Control**:
 - Each dashboard only shows relevant requests for that role
-- Parents see only their linked students' pending requests
+- Parents see requests where the parent_email matches their registered email
+- Students can send gatepass requests to any parent email address
 - Wardens see all approved requests
 - Security guards search by student ID to find approved requests
 
