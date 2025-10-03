@@ -1,15 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Apply for Gatepass</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply for Gatepass - College Gatepass</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <nav class="navbar navbar-dark">
+    <nav class="navbar">
         <div class="container-fluid">
-            <span class="navbar-brand">📝 Apply for Gatepass</span>
-            <a href="{{ url_for('student_dashboard') }}" class="btn btn-outline-light">← Back to Dashboard</a>
+            <div class="navbar-brand">
+                <div class="user-avatar">
+                    <i class="fas fa-edit"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Apply for Gatepass</div>
+                    <div class="user-role">New Request</div>
+                </div>
+            </div>
+            <div class="navbar-nav">
+                <a href="{{ url_for('student_dashboard') }}" class="btn btn-outline-secondary me-2">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+                <a href="{{ url_for('logout') }}" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
         </div>
     </nav>
     
@@ -17,33 +35,112 @@
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div class="form-card">
-                    <h4>✍️ Gatepass Application Form</h4>
-                    <form method="POST">
-                        <div class="mb-3">
-                            <label for="date_time_out" class="form-label">📅 Date & Time Out</label>
-                            <input type="datetime-local" class="form-control" id="date_time_out" name="date_time_out" required>
+                    <h4><i class="fas fa-edit"></i> Gatepass Application Form</h4>
+                    <form method="POST" id="gatpassForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="date_time_out" class="form-label">
+                                    <i class="fas fa-calendar-alt"></i> Date & Time Out
+                                </label>
+                                <input type="datetime-local" class="form-control" id="date_time_out" name="date_time_out" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="duration_hours" class="form-label">
+                                    <i class="fas fa-hourglass-half"></i> Duration (hours)
+                                </label>
+                                <input type="number" class="form-control" id="duration_hours" name="duration_hours" 
+                                       min="1" max="72" placeholder="e.g., 4" required>
+                            </div>
                         </div>
+                        
                         <div class="mb-3">
-                            <label for="duration_hours" class="form-label">⏱️ Duration (hours)</label>
-                            <input type="number" class="form-control" id="duration_hours" name="duration_hours" min="1" required>
+                            <label for="destination" class="form-label">
+                                <i class="fas fa-map-marker-alt"></i> Destination
+                            </label>
+                            <input type="text" class="form-control" id="destination" name="destination" 
+                                   placeholder="e.g., City Mall, Hospital, Home" required>
                         </div>
+                        
                         <div class="mb-3">
-                            <label for="destination" class="form-label">📍 Destination</label>
-                            <input type="text" class="form-control" id="destination" name="destination" required>
+                            <label for="purpose" class="form-label">
+                                <i class="fas fa-comment-alt"></i> Purpose
+                            </label>
+                            <textarea class="form-control" id="purpose" name="purpose" rows="3" 
+                                      placeholder="Please provide a detailed reason for your visit..." required></textarea>
                         </div>
-                        <div class="mb-3">
-                            <label for="purpose" class="form-label">📄 Purpose</label>
-                            <textarea class="form-control" id="purpose" name="purpose" rows="3" required></textarea>
+                        
+                        <div class="mb-4">
+                            <label for="parent_email" class="form-label">
+                                <i class="fas fa-envelope"></i> Parent Email
+                            </label>
+                            <input type="email" class="form-control" id="parent_email" name="parent_email" 
+                                   value="{{ parent_email }}" readonly 
+                                   style="background-color: var(--gray-100); cursor: not-allowed;">
+                            <div class="form-text text-success">
+                                <i class="fas fa-check-circle"></i> 
+                                <strong>Your Parent:</strong> {{ parent_name }} ({{ parent_email }})
+                                <br><small class="text-muted">This email is automatically assigned based on your student record.</small>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="parent_email" class="form-label">📧 Parent Email</label>
-                            <input type="email" class="form-control" id="parent_email" name="parent_email" placeholder="Enter parent's email address" required>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('student_dashboard') }}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Submit Request
+                            </button>
                         </div>
-                        <button type="submit" class="btn btn-primary">Submit Request</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
+
+    <script>
+        // Set minimum date to current date and time
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('date_time_out').min = now.toISOString().slice(0, 16);
+        
+        // Form validation and loading state
+        document.getElementById('gatpassForm').addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+            submitBtn.disabled = true;
+            
+            // Re-enable after 3 seconds in case of error
+            setTimeout(() => {
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Request';
+                submitBtn.disabled = false;
+            }, 3000);
+        });
+
+        // Auto-resize textarea
+        const textarea = document.getElementById('purpose');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+
+        // Duration suggestions
+        const durationInput = document.getElementById('duration_hours');
+        const durationSuggestions = document.createElement('div');
+        durationSuggestions.className = 'mt-2';
+        durationSuggestions.innerHTML = `
+            <small class="text-muted">Quick suggestions:</small>
+            <div class="mt-1">
+                <button type="button" class="btn btn-outline-secondary btn-sm me-1" onclick="setDuration(2)">2 hrs</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm me-1" onclick="setDuration(4)">4 hrs</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm me-1" onclick="setDuration(8)">8 hrs</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDuration(24)">1 day</button>
+            </div>
+        `;
+        durationInput.parentNode.appendChild(durationSuggestions);
+
+        function setDuration(hours) {
+            document.getElementById('duration_hours').value = hours;
+        }
+    </script>
 </body>
 </html>

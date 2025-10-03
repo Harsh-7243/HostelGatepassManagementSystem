@@ -26,6 +26,24 @@
             <h4>🔍 Approved Requests - Oversight View</h4>
         </div>
         
+        <!-- Filter Buttons -->
+        <div class="filter-buttons mb-4">
+            <div class="btn-group" role="group" aria-label="Filter options">
+                <a href="{{ url_for('warden_dashboard', filter_type='all') }}" 
+                   class="btn {% if current_filter == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    📋 All <span class="badge bg-light text-dark ms-1">{{ counts.all }}</span>
+                </a>
+                <a href="{{ url_for('warden_dashboard', filter_type='pending') }}" 
+                   class="btn {% if current_filter == 'pending' %}btn-info{% else %}btn-outline-info{% endif %}">
+                    📂 Open <span class="badge bg-light text-dark ms-1">{{ counts.pending }}</span>
+                </a>
+                <a href="{{ url_for('warden_dashboard', filter_type='history') }}" 
+                   class="btn {% if current_filter == 'history' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+                    🔒 Closed <span class="badge bg-light text-dark ms-1">{{ counts.history }}</span>
+                </a>
+            </div>
+        </div>
+        
         <div class="table-container">
             <table class="table">
                 <thead>
@@ -46,7 +64,7 @@
                     <tr>
                         <td><strong>#{{ req[0] }}</strong></td>
                         <td>{{ req[1] }}<br><small class="text-muted">{{ req[2] }}</small></td>
-                        <td>{{ req[3].strftime('%d %b, %I:%M %p') if req[3] else '-' }}</td>
+                        <td>{{ req[3] if req[3] else '-' }}</td>
                         <td>{{ req[4] }} hrs</td>
                         <td>{{ req[5] }}</td>
                         <td>{{ req[6] }}</td>
@@ -58,7 +76,7 @@
                         <td><span class="badge bg-primary">{{ req[9] }}</span></td>
                         <td>
                             {% if req[8] == 'Open' %}
-                                <a href="{{ url_for('close_request', request_id=req[0]) }}" class="btn btn-sm btn-warning">🔒 Close</a>
+                                <a href="{{ url_for('close_request', request_id=req[0], filter_type=current_filter) }}" class="btn btn-sm btn-warning">🔒 Close</a>
                             {% else %}
                                 -
                             {% endif %}

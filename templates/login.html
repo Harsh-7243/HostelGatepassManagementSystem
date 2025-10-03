@@ -1,56 +1,109 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>College Gatepass System - Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="login-container">
         <div class="login-card">
             <div class="login-header">
-                <h3>🎓 College Gatepass System</h3>
+                <h3><i class="fas fa-graduation-cap"></i> College Gatepass</h3>
+                <p>Secure Digital Gateway Management System</p>
             </div>
             
             {% with messages = get_flashed_messages() %}
                 {% if messages %}
                     {% for message in messages %}
-                        <div class="alert alert-warning">{{ message }}</div>
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i> {{ message }}
+                        </div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
             
-            <form method="POST">
+            <form method="POST" id="loginForm">
                 <div class="mb-3">
-                    <label for="user_id" class="form-label">User ID</label>
-                    <input type="text" class="form-control" id="user_id" name="user_id" required>
+                    <label for="user_id" class="form-label">
+                        <i class="fas fa-user"></i> User ID
+                    </label>
+                    <input type="text" class="form-control" id="user_id" name="user_id" 
+                           placeholder="Enter your user ID" required autocomplete="username">
                 </div>
+                
                 <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" name="password" required>
+                    <label for="password" class="form-label">
+                        <i class="fas fa-lock"></i> Password
+                    </label>
+                    <div class="position-relative">
+                        <input type="password" class="form-control" id="password" name="password" 
+                               placeholder="Enter your password" required autocomplete="current-password">
+                        <button type="button" class="btn position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent" 
+                                id="togglePassword" style="z-index: 10;">
+                            <i class="fas fa-eye text-muted"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label for="role" class="form-label">Select Role</label>
+                
+                <div class="mb-4">
+                    <label for="role" class="form-label">
+                        <i class="fas fa-user-tag"></i> Select Role
+                    </label>
                     <select class="form-select" id="role" name="role" required>
-                        <option value="student">👨‍🎓 Student</option>
-                        <option value="parent">👨‍👩‍👧 Parent</option>
-                        <option value="warden">👔 Warden</option>
-                        <option value="security">🛡️ Security Guard</option>
+                        <option value="">Choose your role...</option>
+                        <option value="student">
+                            <i class="fas fa-user-graduate"></i> Student
+                        </option>
+                        <option value="parent">
+                            <i class="fas fa-users"></i> Parent/Guardian
+                        </option>
+                        <option value="warden">
+                            <i class="fas fa-user-tie"></i> Warden
+                        </option>
+                        <option value="security">
+                            <i class="fas fa-shield-alt"></i> Security Guard
+                        </option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary">Login</button>
+                
+                <button type="submit" class="btn btn-primary w-100 mb-3">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
             </form>
             
-            <div class="demo-credentials">
-                <h6>Demo Credentials:</h6>
-                <small>
-                    <strong>Student:</strong> STU001 / password123<br>
-                    <strong>Parent:</strong> PAR001 / password123<br>
-                    <strong>Warden:</strong> WAR001 / password123<br>
-                    <strong>Security:</strong> SEC001 / password123
-                </small>
-            </div>
         </div>
     </div>
+
+    <script>
+        // Password visibility toggle
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const password = document.getElementById('password');
+            const icon = this.querySelector('i');
+            
+            if (password.type === 'password') {
+                password.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                password.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+
+        // Form validation and loading state
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+            submitBtn.disabled = true;
+        });
+
+        // Auto-focus first input
+        document.getElementById('user_id').focus();
+    </script>
 </body>
 </html>

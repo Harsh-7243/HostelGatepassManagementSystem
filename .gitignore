@@ -1,0 +1,21 @@
+# Secrets and local runtime data
+.env
+gatepass.db
+
+# Python
+__pycache__/
+*.pyc
+
+# Replit artifacts
+.replit
+replit.md
+.local/
+**/replit/**
+
+# Editor/OS
+.DS_Store
+Thumbs.db
+
+# Dependency lock (optional)
+uv.lock
+

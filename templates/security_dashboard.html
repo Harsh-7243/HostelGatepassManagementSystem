@@ -22,27 +22,73 @@
             {% endif %}
         {% endwith %}
         
+        <div class="dashboard-header">
+            <h4>📋 Approved Gatepass Requests</h4>
+            <p class="text-muted">Manage student check-in and check-out</p>
+        </div>
+        
+        <!-- Filter Buttons -->
+        <div class="filter-buttons mb-4">
+            <div class="btn-group" role="group" aria-label="Filter options">
+                <a href="{{ url_for('security_dashboard', filter_type='all') }}" 
+                   class="btn {% if current_filter == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    📋 All <span class="badge bg-light text-dark ms-1">{{ counts.all }}</span>
+                </a>
+                <a href="{{ url_for('security_dashboard', filter_type='checkout') }}" 
+                   class="btn {% if current_filter == 'checkout' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                    ➡️ Check Out <span class="badge bg-light text-dark ms-1">{{ counts.checkout }}</span>
+                </a>
+                <a href="{{ url_for('security_dashboard', filter_type='checkin') }}" 
+                   class="btn {% if current_filter == 'checkin' %}btn-info{% else %}btn-outline-info{% endif %}">
+                    ⬅️ Check In <span class="badge bg-light text-dark ms-1">{{ counts.checkin }}</span>
+                </a>
+                <a href="{{ url_for('security_dashboard', filter_type='completed') }}" 
+                   class="btn {% if current_filter == 'completed' %}btn-success{% else %}btn-outline-success{% endif %}">
+                    ✅ Completed <span class="badge bg-light text-dark ms-1">{{ counts.completed }}</span>
+                </a>
+            </div>
+        </div>
+        
         <div class="search-card">
-            <h5>🔍 Search Student by ID</h5>
+            <h5>🔍 Search Student by ID (Optional)</h5>
             <form method="POST" action="{{ url_for('security_search') }}">
                 <div class="input-group">
                     <input type="text" class="form-control" name="student_id" placeholder="Enter Student ID (e.g., STU001)" required>
-                    <button class="btn btn-primary" type="submit">Search</button>
+                    <button class="btn btn-primary" type="submit">Search Specific Student</button>
+                    <a href="{{ url_for('security_dashboard') }}" class="btn btn-outline-secondary">Show All</a>
                 </div>
             </form>
         </div>
         
         {% if student_id %}
-        <div class="dashboard-header">
-            <h4>👤 Student: {{ student_name }} <small class="text-muted">({{ student_id }})</small></h4>
+        <div class="alert alert-info">
+            <strong>👤 Filtered Results for:</strong> {{ student_name }} <small>({{ student_id }})</small>
+            <a href="{{ url_for('security_dashboard') }}" class="btn btn-sm btn-outline-primary ms-2">Show All Students</a>
         </div>
+        {% endif %}
         
         <div class="table-container">
-            <h5 class="mb-3">Approved Gatepass Requests</h5>
+            <h5 class="mb-3">
+                {% if student_id %}
+                    Gatepass Requests for {{ student_name }}
+                {% else %}
+                    {% if current_filter == 'all' %}
+                        All Approved Gatepass Requests
+                    {% elif current_filter == 'checkout' %}
+                        Students Ready for Check Out
+                    {% elif current_filter == 'checkin' %}
+                        Students Ready for Check In
+                    {% elif current_filter == 'completed' %}
+                        Completed Gatepass Requests
+                    {% endif %}
+                {% endif %}
+                <span class="badge bg-primary">{{ requests|length }} requests</span>
+            </h5>
             <table class="table">
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Student</th>
                         <th>Date & Time</th>
                         <th>Duration</th>
                         <th>Destination</th>
@@ -55,34 +101,43 @@
                     {% for req in requests %}
                     <tr>
                         <td><strong>#{{ req[0] }}</strong></td>
-                        <td>{{ req[1].strftime('%d %b, %I:%M %p') if req[1] else '-' }}</td>
-                        <td>{{ req[2] }} hrs</td>
-                        <td>{{ req[3] }}</td>
-                        <td>{{ req[4] }}</td>
                         <td>
-                            <span class="badge {% if req[7] == 'Out' %}bg-warning{% elif req[7] == 'In' %}bg-success{% else %}bg-secondary{% endif %}">
-                                {{ req[7] }}
+                            <strong>{{ req[1] }}</strong><br>
+                            <small class="text-muted">{{ req[2] }}</small>
+                        </td>
+                        <td>{{ req[3] if req[3] else '-' }}</td>
+                        <td>{{ req[4] }} hrs</td>
+                        <td>{{ req[5] }}</td>
+                        <td>{{ req[6] }}</td>
+                        <td>
+                            <span class="badge {% if req[9] == 'Out' %}bg-warning{% elif req[9] == 'In' %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ req[9] }}
                             </span>
                         </td>
                         <td>
-                            {% if req[7] == 'Pending' %}
-                                <a href="{{ url_for('checkout_student', request_id=req[0]) }}" class="btn btn-sm btn-warning">→ Check Out</a>
-                            {% elif req[7] == 'Out' %}
-                                <a href="{{ url_for('checkin_student', request_id=req[0]) }}" class="btn btn-sm btn-success">← Check In</a>
+                            {% if req[9] == 'Pending' %}
+                                <a href="{{ url_for('checkout_student', request_id=req[0], filter_type=current_filter) }}" class="btn btn-sm btn-warning">→ Check Out</a>
+                            {% elif req[9] == 'Out' %}
+                                <a href="{{ url_for('checkin_student', request_id=req[0], filter_type=current_filter) }}" class="btn btn-sm btn-success">← Check In</a>
                             {% else %}
-                                -
+                                <span class="text-muted">✅ Completed</span>
                             {% endif %}
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="text-center">No approved gatepass requests for this student.</td>
+                        <td colspan="8" class="text-center">
+                            {% if student_id %}
+                                No approved gatepass requests for this student.
+                            {% else %}
+                                No approved gatepass requests found. Students need to submit gatepasses and get parent approval first.
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        {% endif %}
     </div>
 </body>
 </html>
