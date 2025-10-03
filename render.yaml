@@ -4,21 +4,9 @@ services:
     env: python
     plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python app.py"
+    startCommand: "gunicorn app:app"
     envVars:
       - key: FLASK_ENV
         value: production
       - key: SECRET_KEY
         value: "your-secret-key"  # Replace with a secure key
-      - key: MAIL_SERVER
-        value: "smtp.example.com" # If using Flask-Mail
-      - key: MAIL_PORT
-        value: "587"              # Your SMTP port
-      - key: MAIL_USERNAME
-        value: "your-email@example.com"
-      - key: MAIL_PASSWORD
-        value: "your-email-password"
-      - key: MAIL_USE_TLS
-        value: "True"
-      - key: MAIL_USE_SSL
-        value: "False"
