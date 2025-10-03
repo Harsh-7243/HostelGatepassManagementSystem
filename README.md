@@ -62,6 +62,3 @@ Use these credentials to log in for each role:
 - `static/css/style.css` - Custom styles
 - `templates/` - HTML templates for all dashboards and forms
 
-## License
-
-MIT License
