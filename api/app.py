@@ -195,8 +195,44 @@ def register():
         next_num = len([uid for uid in existing_ids if uid.startswith(prefix)]) + 1
         new_user_id = f"{prefix}{next_num:03d}"
         
-        flash(f"Registration successful! Your User ID is: {new_user_id}. This is a demo - in production, admin approval would be required.", 'success')
-        return render_template('register_success.html', user_id=new_user_id)
+        success_html = f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Registration Successful</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>
+                body {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }}
+                .success-card {{ background: white; border-radius: 15px; padding: 2rem; margin-top: 5rem; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="success-card text-center">
+                            <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                            <h2 class="mt-3">Registration Successful!</h2>
+                            <div class="alert alert-success mt-3">
+                                <h4>Your User ID: <strong>{new_user_id}</strong></h4>
+                                <p>Please save this ID for login purposes.</p>
+                            </div>
+                            <div class="alert alert-info">
+                                <p><strong>Demo Note:</strong> In production, admin approval would be required.</p>
+                                <p>You can now use this ID to login to the system.</p>
+                            </div>
+                            <a href="/login" class="btn btn-primary btn-lg">
+                                <i class="fas fa-sign-in-alt"></i> Go to Login
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+        from flask import render_template_string
+        return render_template_string(success_html)
         
     except Exception as e:
         flash(f'Registration error: {str(e)}', 'danger')
@@ -205,28 +241,117 @@ def register():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # Route to appropriate dashboard based on role
-    if current_user.role == 'student':
-        return render_template('student_dashboard.html', 
-                             requests=[], current_filter='all', 
-                             counts={'all': 0, 'pending': 0, 'approved': 0})
-    elif current_user.role == 'parent':
-        return render_template('parent_dashboard.html',
-                             requests=[], current_filter='all',
-                             counts={'all': 0, 'pending': 0, 'approved': 0})
-    elif current_user.role == 'warden':
-        return render_template('warden_dashboard.html',
-                             requests=[], current_filter='all',
-                             counts={'all': 0, 'pending': 0, 'history': 0},
-                             pending_count=0)
-    elif current_user.role == 'security':
-        return render_template('security_dashboard.html',
-                             requests=[], current_filter='all',
-                             counts={'all': 0, 'checkout': 0, 'checkin': 0, 'completed': 0})
-    else:
-        return render_template_string(DASHBOARD_TEMPLATE, 
-                                    role=current_user.role, 
-                                    user_name=current_user.name)
+    # Use a simple dashboard template that works on Vercel
+    dashboard_html = f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>{current_user.role.title()} Dashboard</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            body {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }}
+            .dashboard-card {{ background: white; border-radius: 15px; padding: 2rem; margin-top: 2rem; }}
+        </style>
+    </head>
+    <body>
+        <nav class="navbar navbar-dark bg-primary">
+            <div class="container-fluid">
+                <span class="navbar-brand">
+                    <i class="fas fa-user-tie"></i> {current_user.name} - {current_user.role.title()}
+                </span>
+                <a href="/logout" class="btn btn-outline-light">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </nav>
+        
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-10">
+                    <div class="dashboard-card">
+                        <div class="text-center mb-4">
+                            <h2><i class="fas fa-tachometer-alt"></i> {current_user.role.title()} Dashboard</h2>
+                            <p class="text-muted">Welcome to your personalized dashboard, {current_user.name}!</p>
+                        </div>
+                        
+                        <div class="alert alert-success">
+                            <h4><i class="fas fa-check-circle"></i> Login Successful!</h4>
+                            <p>You have successfully logged into the Hostel Gatepass Management System.</p>
+                            <hr>
+                            <h5>🎯 System Features:</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <ul class="list-unstyled">
+                                        <li><i class="fas fa-user-plus text-success"></i> User Registration System</li>
+                                        <li><i class="fas fa-file-alt text-info"></i> Gatepass Applications</li>
+                                        <li><i class="fas fa-check text-warning"></i> Approval Workflow</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="list-unstyled">
+                                        <li><i class="fas fa-bell text-primary"></i> Real-time Notifications</li>
+                                        <li><i class="fas fa-shield-alt text-danger"></i> Security Management</li>
+                                        <li><i class="fas fa-chart-bar text-secondary"></i> Analytics & Reports</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-users fa-2x mb-2"></i>
+                                        <h5>User Management</h5>
+                                        <p>Manage user accounts and permissions</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                                        <h5>Gatepass Requests</h5>
+                                        <p>View and manage gatepass applications</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-chart-line fa-2x mb-2"></i>
+                                        <h5>Reports</h5>
+                                        <p>Generate system reports and analytics</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 text-center">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle"></i> Demo Version</h6>
+                                <p class="mb-0">This is a demo deployment on Vercel. The full system includes database integration, 
+                                email notifications, and complete CRUD operations.</p>
+                                <hr>
+                                <p class="mb-0">
+                                    <strong>GitHub:</strong> 
+                                    <a href="https://github.com/Harsh-7243/HostelGatepassManagementSystem" target="_blank" class="text-decoration-none">
+                                        View Source Code <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    '''
+    
+    from flask import render_template_string
+    return render_template_string(dashboard_html)
 
 @app.route('/logout')
 @login_required
