@@ -1,16 +1,18 @@
-from flask import Flask, jsonify, render_template_string, request, redirect, url_for, flash, session
+from flask import Flask, jsonify, render_template, request, redirect, url_for, flash, session
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 import os
 from datetime import datetime
 
-app = Flask(__name__)
+# Create Flask app with correct template paths for Vercel
+app = Flask(__name__, 
+           template_folder='../templates',
+           static_folder='../static')
 app.secret_key = os.environ.get('SESSION_SECRET', 'vercel-demo-secret-key')
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-
 # Demo users for Vercel
 DEMO_USERS = {
     'students': {
@@ -169,14 +171,62 @@ def login():
         
         flash('Invalid credentials', 'danger')
     
-    return render_template_string(LOGIN_TEMPLATE)
+    return render_template('login.html')
+
+@app.route('/register', methods=['POST'])
+def register():
+    try:
+        # Get form data
+        user_type = request.form.get('user_type')
+        name = request.form.get('name')
+        email = request.form.get('email')
+        phone = request.form.get('phone')
+        password = request.form.get('password')
+        
+        # Generate demo user ID
+        prefix_map = {'student': 'STU', 'parent': 'PAR', 'warden': 'WAR', 'security': 'SEC'}
+        prefix = prefix_map.get(user_type, 'USR')
+        
+        # Find next available ID
+        existing_ids = []
+        for users in DEMO_USERS.values():
+            existing_ids.extend([uid for uid in users.keys() if uid.startswith(prefix)])
+        
+        next_num = len([uid for uid in existing_ids if uid.startswith(prefix)]) + 1
+        new_user_id = f"{prefix}{next_num:03d}"
+        
+        flash(f"Registration successful! Your User ID is: {new_user_id}. This is a demo - in production, admin approval would be required.", 'success')
+        return render_template('register_success.html', user_id=new_user_id)
+        
+    except Exception as e:
+        flash(f'Registration error: {str(e)}', 'danger')
+        return redirect(url_for('login'))
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template_string(DASHBOARD_TEMPLATE, 
-                                role=current_user.role, 
-                                user_name=current_user.name)
+    # Route to appropriate dashboard based on role
+    if current_user.role == 'student':
+        return render_template('student_dashboard.html', 
+                             requests=[], current_filter='all', 
+                             counts={'all': 0, 'pending': 0, 'approved': 0})
+    elif current_user.role == 'parent':
+        return render_template('parent_dashboard.html',
+                             requests=[], current_filter='all',
+                             counts={'all': 0, 'pending': 0, 'approved': 0})
+    elif current_user.role == 'warden':
+        return render_template('warden_dashboard.html',
+                             requests=[], current_filter='all',
+                             counts={'all': 0, 'pending': 0, 'history': 0},
+                             pending_count=0)
+    elif current_user.role == 'security':
+        return render_template('security_dashboard.html',
+                             requests=[], current_filter='all',
+                             counts={'all': 0, 'checkout': 0, 'checkin': 0, 'completed': 0})
+    else:
+        return render_template_string(DASHBOARD_TEMPLATE, 
+                                    role=current_user.role, 
+                                    user_name=current_user.name)
 
 @app.route('/logout')
 @login_required
