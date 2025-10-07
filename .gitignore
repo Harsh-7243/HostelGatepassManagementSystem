@@ -1,21 +1,57 @@
-# Secrets and local runtime data
-.env
-gatepass.db
-
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Replit artifacts
-.replit
-replit.md
-.local/
-**/replit/**
+# Flask
+instance/
+.webassets-cache
 
-# Editor/OS
+# Environment variables
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Dependency lock (optional)
-uv.lock
+# Logs
+*.log
 
+# Database (for local development only)
+# Note: SQLite doesn't work on Vercel, we'll need to use a cloud database
+gatepass.db

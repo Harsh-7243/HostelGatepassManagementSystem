@@ -15,7 +15,9 @@ login_manager.login_view = 'login'  # type: ignore
 def get_db_connection():
     # Use SQLite for easier development setup
     db_path = os.environ.get('DATABASE_PATH', 'gatepass.db')
-    return sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path)
+    # Don't use row_factory here to maintain compatibility with existing index-based access
+    return conn
 
 class User(UserMixin):
     def __init__(self, user_id, name, role):
@@ -106,6 +108,58 @@ def logout():
     session.pop('user_role', None)
     logout_user()
     return redirect(url_for('login'))
+
+@app.route('/register', methods=['POST'])
+def register():
+    # Import registration function
+    from user_registration import register_new_user
+    
+    # Get common fields
+    user_type = request.form.get('user_type')
+    name = request.form.get('name')
+    email = request.form.get('email')
+    phone = request.form.get('phone')
+    password = request.form.get('password')
+    
+    print(f"Registration attempt: {user_type}, {name}, {email}")  # Debug log
+    
+    # Prepare kwargs for role-specific fields
+    kwargs = {}
+    
+    if user_type == 'student':
+        kwargs['parent_id'] = request.form.get('parent_id') or None
+        kwargs['hostel_block'] = request.form.get('hostel_block')
+        kwargs['room_number'] = request.form.get('room_number')
+        kwargs['course'] = request.form.get('course')
+        kwargs['year_of_study'] = request.form.get('year_of_study') or None
+    
+    elif user_type == 'parent':
+        kwargs['student_id'] = request.form.get('student_id') or None
+        kwargs['relationship'] = request.form.get('relationship')
+        kwargs['address'] = request.form.get('address')
+    
+    elif user_type == 'warden':
+        kwargs['designation'] = request.form.get('designation')
+        kwargs['hostel_block'] = request.form.get('warden_hostel_block')
+    
+    elif user_type == 'security':
+        kwargs['shift'] = request.form.get('shift')
+        kwargs['gate_assigned'] = request.form.get('gate_assigned')
+    
+    # Register the user
+    try:
+        result = register_new_user(user_type, name, email, phone, password, **kwargs)
+        
+        if result['success']:
+            flash(f"Registration successful! Your User ID is: {result['proposed_user_id']}", 'success')
+            return render_template('register_success.html', 
+                                 user_id=result['proposed_user_id'])
+        else:
+            flash(result['error'], 'danger')
+            return redirect(url_for('login'))
+    except Exception as e:
+        flash(f'Registration error: {str(e)}', 'danger')
+        return redirect(url_for('login'))
 
 @app.route('/student/dashboard')
 @app.route('/student/dashboard/<filter_type>')
@@ -443,6 +497,10 @@ def warden_dashboard(filter_type='all'):
     cur.execute("SELECT COUNT(*) FROM gatepass_requests WHERE parent_approval_status = 'Approved' AND warden_status = 'Closed'", ())
     history_count = cur.fetchone()[0]
     
+    # Get pending registrations count
+    cur.execute("SELECT COUNT(*) FROM pending_registrations WHERE status = 'pending'", ())
+    pending_reg_count = cur.fetchone()[0]
+    
     cur.close()
     conn.close()
     
@@ -453,7 +511,8 @@ def warden_dashboard(filter_type='all'):
                              'all': all_count,
                              'pending': pending_count,
                              'history': history_count
-                         })
+                         },
+                         pending_count=pending_reg_count)
 
 @app.route('/warden/close/<int:request_id>')
 @app.route('/warden/close/<int:request_id>/<filter_type>')
@@ -478,6 +537,53 @@ def close_request(request_id, filter_type='all'):
     
     flash('Request closed successfully!')
     return redirect(url_for('warden_dashboard', filter_type=filter_type))
+
+@app.route('/warden/pending-registrations')
+@login_required
+def pending_registrations():
+    if current_user.role != 'warden':
+        flash('Access denied')
+        return redirect(url_for('index'))
+    
+    from user_registration import get_pending_registrations
+    registrations = get_pending_registrations()
+    
+    return render_template('pending_registrations.html', registrations=registrations)
+
+@app.route('/warden/approve-registration/<int:registration_id>', methods=['POST'])
+@login_required
+def approve_registration(registration_id):
+    if current_user.role != 'warden':
+        flash('Access denied')
+        return redirect(url_for('index'))
+    
+    from user_registration import approve_registration as approve_reg
+    result = approve_reg(registration_id, current_user.id)
+    
+    if result['success']:
+        flash(result['message'], 'success')
+    else:
+        flash(result['error'], 'danger')
+    
+    return redirect(url_for('pending_registrations'))
+
+@app.route('/warden/reject-registration/<int:registration_id>', methods=['POST'])
+@login_required
+def reject_registration(registration_id):
+    if current_user.role != 'warden':
+        flash('Access denied')
+        return redirect(url_for('index'))
+    
+    from user_registration import reject_registration as reject_reg
+    reason = request.form.get('reason', 'No reason provided')
+    result = reject_reg(registration_id, current_user.id, reason)
+    
+    if result['success']:
+        flash(result['message'], 'success')
+    else:
+        flash(result['error'], 'danger')
+    
+    return redirect(url_for('pending_registrations'))
 
 @app.route('/security/dashboard')
 @app.route('/security/dashboard/<filter_type>')

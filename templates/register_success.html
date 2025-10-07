@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Successful - College Gatepass System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .success-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        .success-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        .success-icon {
+            font-size: 80px;
+            color: #28a745;
+            margin-bottom: 20px;
+        }
+        .credential-box {
+            background: #f8f9fa;
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .user-id {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-card">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            
+            <h2 class="mb-3">Registration Submitted Successfully!</h2>
+            <p class="text-muted mb-4">Your registration request has been received and is pending approval.</p>
+            
+            <div class="credential-box">
+                <h5><i class="fas fa-id-badge"></i> Your Assigned User ID</h5>
+                <div class="user-id">{{ user_id }}</div>
+                <p class="text-muted mt-3">
+                    <i class="fas fa-info-circle"></i> Please save this User ID. You will need it to login once your account is approved.
+                </p>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="fas fa-clock"></i> <strong>What happens next?</strong><br>
+                <small>
+                    Your registration will be reviewed by the administration. Once approved, you can login using:
+                    <ul class="text-start mt-2 mb-0">
+                        <li>User ID: <strong>{{ user_id }}</strong></li>
+                        <li>Password: The password you created</li>
+                    </ul>
+                </small>
+            </div>
+
+            <div class="alert alert-warning mt-3">
+                <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong><br>
+                <small>Write down your User ID somewhere safe. You'll need it for login after approval.</small>
+            </div>
+
+            <a href="{{ url_for('login') }}" class="btn btn-primary w-100 mt-3">
+                <i class="fas fa-sign-in-alt"></i> Go to Login Page
+            </a>
+        </div>
+    </div>
+</body>
+</html>

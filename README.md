@@ -1,64 +1,88 @@
-# Hostel Gatepass Management System
+# 🎓 Hostel Gatepass Management System
 
-A modern digital gateway management system for college hostels, built with Flask. It supports role-based dashboards for Students, Parents, Wardens, and Security Guards.
+A modern, comprehensive digital solution for managing student gatepass requests in hostels with **user registration system** and role-based access for students, parents, wardens, and security guards.
 
-## Features
+## ✨ Features
 
-- Student gatepass application and tracking
-- Parent approval workflow
-- Warden oversight and closure
-- Security guard check-in/check-out management
-- Responsive UI with Bootstrap and custom styles
-- SQLite database for easy setup
+### 🔐 Multi-Role Authentication & Registration
+- **New User Registration**: Self-service registration with admin approval
+- **Students**: Apply for gatepasses, track status
+- **Parents**: Approve/reject student requests
+- **Wardens**: Oversight, management & user approval
+- **Security Guards**: Check-in/check-out management
 
-## Getting Started
+### 🚀 Core Functionality
+- **Modern UI/UX**: Beautiful split-screen login with tab navigation
+- **User Registration**: Dynamic forms based on role selection
+- **Admin Approval**: Pending registrations dashboard for wardens
+- **Digital Gatepass System**: Complete application workflow
+- **Real-time Status Tracking**: Live updates and notifications
+- **Parent Integration**: Email notifications and approval system
+- **Security Management**: Check-in/out with real-time status
 
-### 1. Install dependencies
+## 🚀 Quick Start
 
-```sh
-pip install -r requirements.txt
+1. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Setup Database**
+   ```bash
+   python db_init.py
+   ```
+
+3. **Run Application**
+   ```bash
+   python app.py
+   ```
+
+4. **Access System**
+   - Open http://localhost:5000
+   - Use **Sign In** tab for existing users
+   - Use **Register** tab for new user registration
+
+## 👥 Test Accounts
+
+- **Student**: STU001 / college123
+- **Parent**: PAR001 / college123  
+- **Warden**: WAR001 / college123
+- **Security**: SEC001 / college123
+
+## 🔄 Registration Workflow
+
+1. **New User**: Fill registration form → Get User ID
+2. **Admin Review**: Warden approves/rejects in dashboard
+3. **Account Creation**: Approved users can login immediately
+4. **Role Access**: Automatic redirect to appropriate dashboard
+
+## 🛠️ Technology Stack
+
+- **Backend**: Flask, SQLite
+- **Frontend**: HTML5, CSS3, Bootstrap 5, JavaScript
+- **Authentication**: Flask-Login with session management
+- **Security**: Werkzeug password hashing
+- **Database**: SQLite with enhanced schema for registration system
+
+## 📁 Project Structure
+
 ```
-
-### 2. Initialize the database
-
-```sh
-python db_init.py
+HostelGatepassManagementSystem/
+├── app.py                    # Main Flask application
+├── db_init.py               # Database setup & sample data
+├── user_registration.py     # Registration logic
+├── gatepass.db             # SQLite database
+├── requirements.txt        # Python dependencies
+├── README.md              # This file
+├── static/css/style.css   # Custom styles
+└── templates/             # HTML templates
+    ├── login.html         # Modern login & registration
+    ├── student_dashboard.html
+    ├── parent_dashboard.html
+    ├── warden_dashboard.html
+    ├── security_dashboard.html
+    ├── pending_registrations.html
+    ├── register_success.html
+    └── apply_gatepass.html
 ```
-
-### 3. Run the application
-
-```sh
-python app.py
-```
-
-The app will be available at [http://localhost:5000](http://localhost:5000).
-
-## Default Login Credentials
-
-Use these credentials to log in for each role:
-
-| Role      | User ID   | Password     | Name              |
-|-----------|-----------|--------------|-------------------|
-| Student   | STU001    | college123   | Arjun Kumar       |
-| Student   | STU002    | college123   | Priya Sharma      |
-| Student   | STU003    | college123   | Rohit Patel       |
-| Student   | STU004    | college123   | Sneha Gupta       |
-| Student   | STU005    | college123   | Vikram Singh      |
-| Parent    | PAR001    | college123   | Rajesh Kumar      |
-| Parent    | PAR002    | college123   | Sunita Sharma     |
-| Parent    | PAR003    | college123   | Mahesh Patel      |
-| Parent    | PAR004    | college123   | Kavita Gupta      |
-| Parent    | PAR005    | college123   | Suresh Singh      |
-| Warden    | WAR001    | college123   | Dr. Ramesh Verma  |
-| Warden    | WAR002    | college123   | Prof. Meera Joshi |
-| Security  | SEC001    | college123   | Ravi Shankar      |
-| Security  | SEC002    | college123   | Mohan Lal         |
-| Security  | SEC003    | college123   | Deepak Kumar      |
-
-## Folder Structure
-
-- `app.py` - Main Flask application
-- `db_init.py` - Database initialization script
-- `static/css/style.css` - Custom styles
-- `templates/` - HTML templates for all dashboards and forms
 

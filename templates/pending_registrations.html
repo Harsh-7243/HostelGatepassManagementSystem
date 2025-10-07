@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pending Registrations - Warden Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand"><i class="fas fa-user-tie"></i> {{ current_user.name }}</span>
+            <div>
+                <a href="{{ url_for('warden_dashboard') }}" class="btn btn-outline-light me-2">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light">Logout</a>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container dashboard-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i> {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="dashboard-header">
+            <h4><i class="fas fa-user-clock"></i> Pending User Registrations</h4>
+            <p class="text-muted">Review and approve new user registration requests</p>
+        </div>
+        
+        <div class="table-container">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>User Type</th>
+                        <th>Proposed ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Details</th>
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reg in registrations %}
+                    <tr>
+                        <td><strong>#{{ reg['registration_id'] }}</strong></td>
+                        <td>
+                            <span class="badge bg-primary">
+                                <i class="fas fa-{{ 'user-graduate' if reg['user_type'] == 'student' else 'users' if reg['user_type'] == 'parent' else 'user-tie' if reg['user_type'] == 'warden' else 'shield-alt' }}"></i>
+                                {{ reg['user_type']|capitalize }}
+                            </span>
+                        </td>
+                        <td><strong>{{ reg['proposed_user_id'] }}</strong></td>
+                        <td>{{ reg['name'] }}</td>
+                        <td><small>{{ reg['email'] }}</small></td>
+                        <td><small>{{ reg['phone'] }}</small></td>
+                        <td>
+                            <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#detailsModal{{ reg['registration_id'] }}">
+                                <i class="fas fa-info-circle"></i> View Details
+                            </button>
+                        </td>
+                        <td><small>{{ reg['submitted_at'] }}</small></td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ reg['registration_id'] }}">
+                                    <i class="fas fa-check"></i> Approve
+                                </button>
+                                <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ reg['registration_id'] }}">
+                                    <i class="fas fa-times"></i> Reject
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Details Modal -->
+                    <div class="modal fade" id="detailsModal{{ reg['registration_id'] }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Registration Details</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <dl class="row">
+                                        <dt class="col-sm-4">User Type:</dt>
+                                        <dd class="col-sm-8">{{ reg['user_type']|capitalize }}</dd>
+                                        
+                                        <dt class="col-sm-4">Proposed ID:</dt>
+                                        <dd class="col-sm-8"><strong>{{ reg['proposed_user_id'] }}</strong></dd>
+                                        
+                                        <dt class="col-sm-4">Name:</dt>
+                                        <dd class="col-sm-8">{{ reg['name'] }}</dd>
+                                        
+                                        <dt class="col-sm-4">Email:</dt>
+                                        <dd class="col-sm-8">{{ reg['email'] }}</dd>
+                                        
+                                        <dt class="col-sm-4">Phone:</dt>
+                                        <dd class="col-sm-8">{{ reg['phone'] }}</dd>
+                                        
+                                        {% if reg['user_type'] == 'student' %}
+                                            <dt class="col-sm-4">Parent ID:</dt>
+                                            <dd class="col-sm-8">{{ reg['parent_id'] or 'Not provided' }}</dd>
+                                            
+                                            <dt class="col-sm-4">Hostel Block:</dt>
+                                            <dd class="col-sm-8">{{ reg['hostel_block'] }}</dd>
+                                            
+                                            <dt class="col-sm-4">Room Number:</dt>
+                                            <dd class="col-sm-8">{{ reg['room_number'] }}</dd>
+                                            
+                                            <dt class="col-sm-4">Course:</dt>
+                                            <dd class="col-sm-8">{{ reg['course'] }}</dd>
+                                            
+                                            <dt class="col-sm-4">Year of Study:</dt>
+                                            <dd class="col-sm-8">{{ reg['year_of_study'] }}</dd>
+                                        {% elif reg['user_type'] == 'parent' %}
+                                            <dt class="col-sm-4">Student ID:</dt>
+                                            <dd class="col-sm-8">{{ reg['student_id'] or 'Not provided' }}</dd>
+                                            
+                                            <dt class="col-sm-4">Relationship:</dt>
+                                            <dd class="col-sm-8">{{ reg['relationship'] }}</dd>
+                                            
+                                            <dt class="col-sm-4">Address:</dt>
+                                            <dd class="col-sm-8">{{ reg['address'] }}</dd>
+                                        {% elif reg['user_type'] == 'warden' %}
+                                            <dt class="col-sm-4">Designation:</dt>
+                                            <dd class="col-sm-8">{{ reg['designation'] }}</dd>
+                                            
+                                            <dt class="col-sm-4">Hostel Block:</dt>
+                                            <dd class="col-sm-8">{{ reg['hostel_block'] }}</dd>
+                                        {% elif reg['user_type'] == 'security' %}
+                                            <dt class="col-sm-4">Shift:</dt>
+                                            <dd class="col-sm-8">{{ reg['shift'] }}</dd>
+                                            
+                                            <dt class="col-sm-4">Gate Assigned:</dt>
+                                            <dd class="col-sm-8">{{ reg['gate_assigned'] }}</dd>
+                                        {% endif %}
+                                        
+                                        <dt class="col-sm-4">Submitted:</dt>
+                                        <dd class="col-sm-8">{{ reg['submitted_at'] }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Approve Modal -->
+                    <div class="modal fade" id="approveModal{{ reg['registration_id'] }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-success text-white">
+                                    <h5 class="modal-title">Approve Registration</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="POST" action="{{ url_for('approve_registration', registration_id=reg['registration_id']) }}">
+                                    <div class="modal-body">
+                                        <p>Are you sure you want to approve this registration?</p>
+                                        <dl class="row">
+                                            <dt class="col-sm-4">Name:</dt>
+                                            <dd class="col-sm-8">{{ reg['name'] }}</dd>
+                                            <dt class="col-sm-4">User ID:</dt>
+                                            <dd class="col-sm-8"><strong>{{ reg['proposed_user_id'] }}</strong></dd>
+                                        </dl>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle"></i> The user will be able to login immediately after approval.
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-check"></i> Approve Registration
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reject Modal -->
+                    <div class="modal fade" id="rejectModal{{ reg['registration_id'] }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-danger text-white">
+                                    <h5 class="modal-title">Reject Registration</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="POST" action="{{ url_for('reject_registration', registration_id=reg['registration_id']) }}">
+                                    <div class="modal-body">
+                                        <p>Please provide a reason for rejection:</p>
+                                        <textarea class="form-control" name="reason" rows="3" required placeholder="Enter rejection reason..."></textarea>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fas fa-times"></i> Reject Registration
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h5>No Pending Registrations</h5>
+                            <p class="text-muted">All registration requests have been processed.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
