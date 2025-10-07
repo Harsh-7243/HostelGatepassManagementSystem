@@ -14,60 +14,10 @@ login_manager.login_view = 'login'  # type: ignore
 
 def get_db_connection():
     # Use SQLite for easier development setup
-    # For Vercel, use in-memory database or environment variable
-    if os.environ.get('VERCEL'):
-        # In Vercel, create a temporary in-memory database
-        conn = sqlite3.connect(':memory:')
-        # Initialize with basic demo data
-        init_demo_data(conn)
-    else:
-        db_path = os.environ.get('DATABASE_PATH', 'gatepass.db')
-        conn = sqlite3.connect(db_path)
+    db_path = os.environ.get('DATABASE_PATH', 'gatepass.db')
+    conn = sqlite3.connect(db_path)
     # Don't use row_factory here to maintain compatibility with existing index-based access
     return conn
-
-def init_demo_data(conn):
-    """Initialize demo data for Vercel deployment"""
-    cur = conn.cursor()
-    
-    # Create basic tables
-    cur.execute('''CREATE TABLE IF NOT EXISTS students (
-        student_id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        password_hash TEXT NOT NULL
-    )''')
-    
-    cur.execute('''CREATE TABLE IF NOT EXISTS wardens (
-        warden_id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        password_hash TEXT NOT NULL
-    )''')
-    
-    cur.execute('''CREATE TABLE IF NOT EXISTS parents (
-        parent_id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        password_hash TEXT NOT NULL
-    )''')
-    
-    cur.execute('''CREATE TABLE IF NOT EXISTS security_guards (
-        security_id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        password_hash TEXT NOT NULL
-    )''')
-    
-    # Insert demo users
-    from werkzeug.security import generate_password_hash
-    
-    cur.execute("INSERT OR REPLACE INTO students VALUES (?, ?, ?)", 
-                ('STU001', 'Amit Kumar', generate_password_hash('college123')))
-    cur.execute("INSERT OR REPLACE INTO wardens VALUES (?, ?, ?)", 
-                ('WAR001', 'Dr. Ramesh Verma', generate_password_hash('college123')))
-    cur.execute("INSERT OR REPLACE INTO parents VALUES (?, ?, ?)", 
-                ('PAR001', 'Rajesh Kumar', generate_password_hash('college123')))
-    cur.execute("INSERT OR REPLACE INTO security_guards VALUES (?, ?, ?)", 
-                ('SEC001', 'Ravi Shankar', generate_password_hash('college123')))
-    
-    conn.commit()
 
 class User(UserMixin):
     def __init__(self, user_id, name, role):

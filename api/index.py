@@ -1,16 +1,17 @@
-from flask import Flask, jsonify, render_template_string, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 import os
 from datetime import datetime
 
-# Create Flask app for Vercel
+# Create Flask app with correct paths for Vercel
 app = Flask(__name__)
-app.secret_key = os.environ.get('SESSION_SECRET', 'gK9mP2xL8nQ4vR7wE3tY6uI0oA5sD1fH9jC8bN2mX7zV4qW1eR6tY3uI8oP5aS2dF')
+app.secret_key = os.environ.get('SESSION_SECRET', 'vercel-demo-secret-key')
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
 # In-memory database for Vercel demo (since SQLite doesn't work on serverless)
 # In production, you'd use PostgreSQL, MySQL, or MongoDB
 DEMO_USERS = {
