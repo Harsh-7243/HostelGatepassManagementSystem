@@ -1,24 +1,16 @@
-# Vercel-compatible version of the Flask app
-import os
-import sys
-from datetime import datetime
-
-# Add the parent directory to the path so we can import our modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, jsonify, render_template_string, request, redirect, url_for, flash, session
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
+import os
+from datetime import datetime
 
-app = Flask(__name__, 
-           template_folder='../templates',
-           static_folder='../static')
-app.secret_key = os.environ.get('SESSION_SECRET', 'vercel-demo-secret-key')
+# Create Flask app for Vercel
+app = Flask(__name__)
+app.secret_key = os.environ.get('SESSION_SECRET', 'gK9mP2xL8nQ4vR7wE3tY6uI0oA5sD1fH9jC8bN2mX7zV4qW1eR6tY3uI8oP5aS2dF')
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-
 # In-memory database for Vercel demo (since SQLite doesn't work on serverless)
 # In production, you'd use PostgreSQL, MySQL, or MongoDB
 DEMO_USERS = {
@@ -273,9 +265,60 @@ def security_dashboard():
 def health():
     return {'status': 'ok', 'message': 'Hostel Gatepass System is running on Vercel!'}
 
-# Export for Vercel
-def handler(request):
-    return app(request.environ, lambda *args: None)
+# Vercel serverless handler
+def handler(event, context):
+    from werkzeug.serving import make_server
+    from werkzeug.wrappers import Request, Response
+    import io
+    
+    # Create a WSGI environ from the Vercel event
+    environ = {
+        'REQUEST_METHOD': event.get('httpMethod', 'GET'),
+        'PATH_INFO': event.get('path', '/'),
+        'QUERY_STRING': event.get('queryStringParameters') or '',
+        'CONTENT_TYPE': event.get('headers', {}).get('content-type', ''),
+        'CONTENT_LENGTH': str(len(event.get('body', ''))),
+        'wsgi.input': io.BytesIO((event.get('body') or '').encode()),
+        'wsgi.errors': io.StringIO(),
+        'wsgi.version': (1, 0),
+        'wsgi.multithread': False,
+        'wsgi.multiprocess': True,
+        'wsgi.run_once': False,
+        'wsgi.url_scheme': 'https',
+        'SERVER_NAME': event.get('headers', {}).get('host', 'localhost'),
+        'SERVER_PORT': '443',
+        'HTTP_HOST': event.get('headers', {}).get('host', 'localhost'),
+    }
+    
+    # Add all headers to environ
+    for key, value in event.get('headers', {}).items():
+        key = 'HTTP_' + key.upper().replace('-', '_')
+        environ[key] = value
+    
+    response_data = []
+    
+    def start_response(status, headers, exc_info=None):
+        response_data.extend([status, headers])
+    
+    # Call the Flask app
+    try:
+        app_response = app(environ, start_response)
+        body = b''.join(app_response)
+        
+        return {
+            'statusCode': int(response_data[0].split()[0]) if response_data else 200,
+            'headers': dict(response_data[1]) if len(response_data) > 1 else {},
+            'body': body.decode('utf-8'),
+            'isBase64Encoded': False
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': f'{{"error": "Internal server error: {str(e)}"}}',
+            'isBase64Encoded': False
+        }
 
+# For local development
 if __name__ == '__main__':
     app.run(debug=True)
