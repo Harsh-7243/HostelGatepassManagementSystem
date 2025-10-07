@@ -198,56 +198,9 @@ def health():
         }
     })
 
-# Vercel handler
-def handler(event, context):
-    from werkzeug.wrappers import Request
-    import io
-    
-    try:
-        # Create WSGI environ
-        environ = {
-            'REQUEST_METHOD': event.get('httpMethod', 'GET'),
-            'PATH_INFO': event.get('path', '/'),
-            'QUERY_STRING': event.get('queryStringParameters') or '',
-            'CONTENT_TYPE': event.get('headers', {}).get('content-type', ''),
-            'CONTENT_LENGTH': str(len(event.get('body', ''))),
-            'wsgi.input': io.BytesIO((event.get('body') or '').encode()),
-            'wsgi.errors': io.StringIO(),
-            'wsgi.version': (1, 0),
-            'wsgi.multithread': False,
-            'wsgi.multiprocess': True,
-            'wsgi.run_once': False,
-            'wsgi.url_scheme': 'https',
-            'SERVER_NAME': event.get('headers', {}).get('host', 'localhost'),
-            'SERVER_PORT': '443',
-        }
-        
-        # Add headers
-        for key, value in event.get('headers', {}).items():
-            key = 'HTTP_' + key.upper().replace('-', '_')
-            environ[key] = value
-        
-        response_data = []
-        
-        def start_response(status, headers, exc_info=None):
-            response_data.extend([status, headers])
-        
-        app_response = app(environ, start_response)
-        body = b''.join(app_response)
-        
-        return {
-            'statusCode': int(response_data[0].split()[0]) if response_data else 200,
-            'headers': dict(response_data[1]) if len(response_data) > 1 else {'Content-Type': 'text/html'},
-            'body': body.decode('utf-8'),
-            'isBase64Encoded': False
-        }
-    except Exception as e:
-        return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'application/json'},
-            'body': f'{{"error": "Server error: {str(e)}"}}',
-            'isBase64Encoded': False
-        }
+# Export the Flask app for Vercel
+# Vercel will automatically handle the WSGI interface
+app.config['ENV'] = 'production'
 
 if __name__ == '__main__':
     app.run(debug=True)
