@@ -5,6 +5,13 @@ from datetime import datetime, timedelta
 import sqlite3
 import os
 
+# Load environment variables for Azure deployment
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not available, continue without it
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', 'dev-secret-key')
 
@@ -65,6 +72,11 @@ def index():
         elif current_user.role == 'security':
             return redirect(url_for('security_dashboard'))
     return redirect(url_for('login'))
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Azure deployment verification"""
+    return "Hostel Gatepass System deployed on Azure ✅"
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -761,4 +773,4 @@ def checkin_student(request_id, filter_type='all'):
     return redirect(url_for('security_dashboard', filter_type=filter_type))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)

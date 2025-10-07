@@ -3,6 +3,29 @@ import os
 from werkzeug.security import generate_password_hash
 from datetime import datetime
 
+# Simple Azure-compatible database path
+DB_PATH = os.path.join(os.getcwd(), "database.db")
+
+def initialize_db():
+    """Simple database initializer for Azure deployment"""
+    if os.path.exists(DB_PATH):
+        print("✅ Database already exists.")
+        return
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS students (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            roll_no TEXT UNIQUE NOT NULL,
+            hostel TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    print("✅ Database initialized or already exists.")
+
 def get_db_connection():
     # Use SQLite for easier development setup
     db_path = os.environ.get('DATABASE_PATH', 'gatepass.db')
@@ -244,4 +267,6 @@ def init_database():
     print("Database initialized successfully!")
 
 if __name__ == '__main__':
-    init_database()
+    # Run both initialization methods for compatibility
+    initialize_db()  # Simple Azure-compatible init
+    init_database()  # Full database initialization

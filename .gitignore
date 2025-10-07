@@ -55,3 +55,4 @@ Thumbs.db
 # Database (for local development only)
 # Note: SQLite doesn't work on Vercel, we'll need to use a cloud database
 gatepass.db
+database.db
