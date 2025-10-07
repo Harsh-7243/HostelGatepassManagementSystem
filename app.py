@@ -1,3 +1,66 @@
+# Add this at the top with other imports
+import logging
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Update your login route
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        try:
+            user_id = request.form.get('user_id')
+            password = request.form.get('password')
+            user_type = request.form.get('user_type')
+            
+            logger.info(f"Login attempt - User ID: {user_id}, Type: {user_type}")
+            
+            if not user_id or not password:
+                flash('Please enter both user ID and password', 'error')
+                return redirect(url_for('login'))
+            
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            # Check user type and table
+            if user_type == 'student':
+                cur.execute('SELECT * FROM students WHERE student_id = %s', (user_id,))
+            elif user_type == 'warden':
+                cur.execute('SELECT * FROM wardens WHERE warden_id = %s', (user_id,))
+            elif user_type == 'parent':
+                cur.execute('SELECT * FROM parents WHERE parent_id = %s', (user_id,))
+            elif user_type == 'security':
+                cur.execute('SELECT * FROM security_guards WHERE guard_id = %s', (user_id,))
+            
+            user = cur.fetchone()
+            conn.close()
+            
+            if user is None:
+                logger.warning(f"User not found: {user_id}")
+                flash('Invalid user ID or password', 'error')
+                return redirect(url_for('login'))
+            
+            # Verify password
+            if not check_password_hash(user['password_hash'], password):
+                logger.warning(f"Invalid password for user: {user_id}")
+                flash('Invalid user ID or password', 'error')
+                return redirect(url_for('login'))
+            
+            # Login successful
+            session['user_id'] = user_id
+            session['user_type'] = user_type
+            logger.info(f"User {user_id} logged in successfully")
+            return redirect(url_for('dashboard'))
+            
+        except Exception as e:
+            logger.error(f"Error during login: {str(e)}", exc_info=True)
+            flash('An error occurred during login. Please try again.', 'error')
+            return redirect(url_for('login'))
+    
+    return render_template('login.html')
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash
