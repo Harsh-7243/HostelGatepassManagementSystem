@@ -1,272 +1,300 @@
-import sqlite3
 import os
-from werkzeug.security import generate_password_hash
-from datetime import datetime
+import sys
+import logging
+from urllib.parse import urlparse
 
-# Simple Azure-compatible database path
-DB_PATH = os.path.join(os.getcwd(), "database.db")
-
-def initialize_db():
-    """Simple database initializer for Azure deployment"""
-    if os.path.exists(DB_PATH):
-        print("✅ Database already exists.")
-        return
-    
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS students (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            roll_no TEXT UNIQUE NOT NULL,
-            hostel TEXT NOT NULL
-        )
-    ''')
-    conn.commit()
-    conn.close()
-    print("✅ Database initialized or already exists.")
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 def get_db_connection():
-    # Use SQLite for easier development setup
-    db_path = os.environ.get('DATABASE_PATH', 'gatepass.db')
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row  # Enable column access by name
-    return conn
+    """
+    Get a database connection based on the environment.
+    Automatically detects if we're using PostgreSQL or SQLite.
+    """
+    try:
+        # Check for PostgreSQL connection string (from Render)
+        if 'DATABASE_URL' in os.environ:
+            import psycopg2
+            result = urlparse(os.environ['DATABASE_URL'])
+            conn = psycopg2.connect(
+                database=result.path[1:],  # Remove leading '/'
+                user=result.username,
+                password=result.password,
+                host=result.hostname,
+                port=result.port
+            )
+            logger.info("Connected to PostgreSQL database")
+            return conn
+        else:
+            # Fall back to SQLite for local development
+            import sqlite3
+            db_path = os.path.join(os.path.dirname(__file__), 'instance', 'database.db')
+            os.makedirs(os.path.dirname(db_path), exist_ok=True)
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            logger.info(f"Connected to SQLite database at {db_path}")
+            return conn
+    except Exception as e:
+        logger.error(f"Error connecting to database: {e}")
+        raise
 
-def init_database():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
-    # Drop tables in correct order (respecting foreign key constraints)
-    cur.execute('DROP TABLE IF EXISTS activity_logs')
-    cur.execute('DROP TABLE IF EXISTS user_sessions')
-    cur.execute('DROP TABLE IF EXISTS gatepass_requests')
-    cur.execute('DROP TABLE IF EXISTS student_parent_links')
-    cur.execute('DROP TABLE IF EXISTS pending_registrations')
-    cur.execute('DROP TABLE IF EXISTS students')
-    cur.execute('DROP TABLE IF EXISTS parents')
-    cur.execute('DROP TABLE IF EXISTS wardens')
-    cur.execute('DROP TABLE IF EXISTS security_guards')
-    
-    # Students Table - Enhanced with additional fields
+def init_db():
+    """Initialize the database with required tables."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check if we're using PostgreSQL
+        is_postgres = 'postgresql' in os.environ.get('DATABASE_URL', '')
+        
+        # Drop existing tables (uncomment only for development)
+        # drop_tables(cur, is_postgres)
+        
+        # Create tables
+        create_tables(cur, is_postgres)
+        
+        # Add initial data
+        add_initial_data(cur, is_postgres)
+        
+        conn.commit()
+        logger.info("✅ Database initialized successfully!")
+        
+    except Exception as e:
+        logger.error(f"❌ Error initializing database: {e}")
+        if conn:
+            conn.rollback()
+        raise
+    finally:
+        if conn:
+            conn.close()
+
+def drop_tables(cur, is_postgres):
+    """Drop all tables (for development only)."""
+    tables = [
+        'gatepass_requests', 'student_parent_links', 
+        'pending_registrations', 'students', 
+        'parents', 'wardens', 'security_guards'
+    ]
+    for table in tables:
+        try:
+            cur.execute(f"DROP TABLE IF EXISTS {table} CASCADE;")
+            logger.info(f"Dropped table: {table}")
+        except Exception as e:
+            logger.warning(f"Could not drop table {table}: {e}")
+
+def create_tables(cur, is_postgres):
+    """Create all required tables."""
+    # Students table
     cur.execute('''
-        CREATE TABLE students (
+        CREATE TABLE IF NOT EXISTS students (
             student_id VARCHAR(50) PRIMARY KEY,
             name VARCHAR(100) NOT NULL,
-            password_hash VARCHAR(200) NOT NULL,
-            email VARCHAR(100) UNIQUE NOT NULL,
-            phone VARCHAR(20),
-            hostel_block VARCHAR(50),
+            password_hash VARCHAR(255) NOT NULL,
+            email VARCHAR(100),
+            hostel VARCHAR(50),
             room_number VARCHAR(20),
-            course VARCHAR(100),
-            year_of_study INTEGER,
-            is_active BOOLEAN DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_login TIMESTAMP
+            phone VARCHAR(20),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''' if is_postgres else '''
+        CREATE TABLE IF NOT EXISTS students (
+            student_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            email TEXT,
+            hostel TEXT,
+            room_number TEXT,
+            phone TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
-    # Parents Table - Enhanced with additional fields
+
+    # Parents table
     cur.execute('''
-        CREATE TABLE parents (
+        CREATE TABLE IF NOT EXISTS parents (
             parent_id VARCHAR(50) PRIMARY KEY,
             name VARCHAR(100) NOT NULL,
-            password_hash VARCHAR(200) NOT NULL,
-            email VARCHAR(100) UNIQUE NOT NULL,
-            phone VARCHAR(20) NOT NULL,
-            relationship VARCHAR(50),
+            password_hash VARCHAR(255) NOT NULL,
+            email VARCHAR(100),
+            phone VARCHAR(20),
             address TEXT,
-            is_active BOOLEAN DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_login TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''' if is_postgres else '''
+        CREATE TABLE IF NOT EXISTS parents (
+            parent_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
-    # Wardens Table - Enhanced with additional fields
+
+    # Wardens table
     cur.execute('''
-        CREATE TABLE wardens (
+        CREATE TABLE IF NOT EXISTS wardens (
             warden_id VARCHAR(50) PRIMARY KEY,
             name VARCHAR(100) NOT NULL,
-            password_hash VARCHAR(200) NOT NULL,
-            email VARCHAR(100) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            email VARCHAR(100),
             phone VARCHAR(20),
-            hostel_block VARCHAR(50),
-            designation VARCHAR(100),
-            is_active BOOLEAN DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_login TIMESTAMP
+            hostel_assigned VARCHAR(50),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''' if is_postgres else '''
+        CREATE TABLE IF NOT EXISTS wardens (
+            warden_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            hostel_assigned TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
-    # Security Guards Table - Enhanced with additional fields
+
+    # Security Guards table
     cur.execute('''
-        CREATE TABLE security_guards (
+        CREATE TABLE IF NOT EXISTS security_guards (
             guard_id VARCHAR(50) PRIMARY KEY,
             name VARCHAR(100) NOT NULL,
-            password_hash VARCHAR(200) NOT NULL,
-            email VARCHAR(100) UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            email VARCHAR(100),
             phone VARCHAR(20),
-            shift VARCHAR(50),
-            gate_assigned VARCHAR(50),
-            is_active BOOLEAN DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_login TIMESTAMP
+            shift_timings TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''' if is_postgres else '''
+        CREATE TABLE IF NOT EXISTS security_guards (
+            guard_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            shift_timings TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
+    # Gatepass Requests table
     cur.execute('''
-        CREATE TABLE gatepass_requests (
-            request_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            student_id VARCHAR(50) REFERENCES students(student_id),
-            parent_email VARCHAR(100) NOT NULL,
-            date_time_out TIMESTAMP NOT NULL,
-            duration_hours INTEGER NOT NULL,
-            destination VARCHAR(200) NOT NULL,
-            purpose TEXT NOT NULL,
-            parent_approval_status VARCHAR(20) DEFAULT 'Pending',
-            parent_approval_timestamp TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            expiry_timestamp TIMESTAMP,
-            warden_status VARCHAR(20) DEFAULT 'Open',
-            security_guard_status VARCHAR(20) DEFAULT 'Pending'
-        )
-    ''')
-    
-    password_hash = generate_password_hash('college123')
-    
-    # Insert 5 students with Indian names and additional details
-    cur.execute('''
-        INSERT INTO students (student_id, name, password_hash, email, phone, hostel_block, room_number, course, year_of_study) VALUES
-        ('STU001', 'Arjun Kumar', ?, 'arjun.kumar@student.edu', '9876543210', 'Block A', 'A-101', 'Computer Science', 2),
-        ('STU002', 'Priya Sharma', ?, 'priya.sharma@student.edu', '9876543211', 'Block B', 'B-205', 'Electronics', 3),
-        ('STU003', 'Rohit Patel', ?, 'rohit.patel@student.edu', '9876543212', 'Block A', 'A-304', 'Mechanical', 1),
-        ('STU004', 'Sneha Gupta', ?, 'sneha.gupta@student.edu', '9876543213', 'Block C', 'C-102', 'Civil Engineering', 2),
-        ('STU005', 'Vikram Singh', ?, 'vikram.singh@student.edu', '9876543214', 'Block A', 'A-210', 'Information Technology', 4)
-    ''', (password_hash, password_hash, password_hash, password_hash, password_hash))
-    
-    # Insert 5 parents with Indian names and additional details
-    cur.execute('''
-        INSERT INTO parents (parent_id, name, password_hash, email, phone, relationship, address) VALUES
-        ('PAR001', 'Rajesh Kumar', ?, 'rajesh.kumar@gmail.com', '9876543220', 'Father', 'Mumbai, Maharashtra'),
-        ('PAR002', 'Sunita Sharma', ?, 'sunita.sharma@gmail.com', '9876543221', 'Mother', 'Delhi, NCR'),
-        ('PAR003', 'Mahesh Patel', ?, 'mahesh.patel@gmail.com', '9876543222', 'Father', 'Ahmedabad, Gujarat'),
-        ('PAR004', 'Kavita Gupta', ?, 'kavita.gupta@gmail.com', '9876543223', 'Mother', 'Lucknow, UP'),
-        ('PAR005', 'Suresh Singh', ?, 'suresh.singh@gmail.com', '9876543224', 'Father', 'Jaipur, Rajasthan')
-    ''', (password_hash, password_hash, password_hash, password_hash, password_hash))
-    
-    # Insert wardens with Indian names and additional details
-    cur.execute('''
-        INSERT INTO wardens (warden_id, name, password_hash, email, phone, hostel_block, designation) VALUES
-        ('WAR001', 'Dr. Ramesh Verma', ?, 'ramesh.verma@college.edu', '9876543230', 'Block A', 'Chief Warden'),
-        ('WAR002', 'Prof. Meera Joshi', ?, 'meera.joshi@college.edu', '9876543231', 'Block B', 'Assistant Warden')
-    ''', (password_hash, password_hash))
-    
-    # Insert security guards with Indian names and additional details
-    cur.execute('''
-        INSERT INTO security_guards (guard_id, name, password_hash, email, phone, shift, gate_assigned) VALUES
-        ('SEC001', 'Ravi Shankar', ?, 'ravi.shankar@college.edu', '9876543240', 'Day', 'Main Gate'),
-        ('SEC002', 'Mohan Lal', ?, 'mohan.lal@college.edu', '9876543241', 'Night', 'Main Gate'),
-        ('SEC003', 'Deepak Kumar', ?, 'deepak.kumar@college.edu', '9876543242', 'Evening', 'Side Gate')
-    ''', (password_hash, password_hash, password_hash))
-    
-    # Student-Parent Relationship Table
-    cur.execute('''
-        CREATE TABLE student_parent_links (
+        CREATE TABLE IF NOT EXISTS gatepass_requests (
+            request_id SERIAL PRIMARY KEY,
             student_id VARCHAR(50) REFERENCES students(student_id),
             parent_id VARCHAR(50) REFERENCES parents(parent_id),
-            linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            departure_time TIMESTAMP NOT NULL,
+            expected_return_time TIMESTAMP NOT NULL,
+            destination TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            status VARCHAR(20) DEFAULT 'pending',
+            approved_by_warden BOOLEAN DEFAULT FALSE,
+            approved_by_parent BOOLEAN DEFAULT FALSE,
+            warden_remarks TEXT,
+            parent_remarks TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''' if is_postgres else '''
+        CREATE TABLE IF NOT EXISTS gatepass_requests (
+            request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT,
+            parent_id TEXT,
+            departure_time TIMESTAMP NOT NULL,
+            expected_return_time TIMESTAMP NOT NULL,
+            destination TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            approved_by_warden BOOLEAN DEFAULT 0,
+            approved_by_parent BOOLEAN DEFAULT 0,
+            warden_remarks TEXT,
+            parent_remarks TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (student_id) REFERENCES students(student_id),
+            FOREIGN KEY (parent_id) REFERENCES parents(parent_id)
+        )
+    ''')
+
+    # Student-Parent Links table
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS student_parent_links (
+            student_id VARCHAR(50) REFERENCES students(student_id),
+            parent_id VARCHAR(50) REFERENCES parents(parent_id),
+            relationship VARCHAR(50),
+            is_verified BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (student_id, parent_id)
         )
-    ''')
-    
-    # Pending Registrations Table - For new user sign-ups
-    cur.execute('''
-        CREATE TABLE pending_registrations (
-            registration_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_type VARCHAR(20) NOT NULL CHECK(user_type IN ('student', 'parent', 'warden', 'security')),
-            proposed_user_id VARCHAR(50) NOT NULL,
-            name VARCHAR(100) NOT NULL,
-            email VARCHAR(100) NOT NULL,
-            phone VARCHAR(20),
-            password_hash VARCHAR(200) NOT NULL,
-            
-            -- Student-specific fields
-            parent_id VARCHAR(50),
-            hostel_block VARCHAR(50),
-            room_number VARCHAR(20),
-            course VARCHAR(100),
-            year_of_study INTEGER,
-            
-            -- Parent-specific fields
-            student_id VARCHAR(50),
-            relationship VARCHAR(50),
-            address TEXT,
-            
-            -- Warden-specific fields
-            designation VARCHAR(100),
-            
-            -- Security-specific fields
-            shift VARCHAR(50),
-            gate_assigned VARCHAR(50),
-            
-            -- Registration metadata
-            status VARCHAR(20) DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
-            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            reviewed_at TIMESTAMP,
-            reviewed_by VARCHAR(50),
-            rejection_reason TEXT,
-            verification_token VARCHAR(100) UNIQUE,
-            
-            UNIQUE(user_type, proposed_user_id),
-            UNIQUE(user_type, email)
-        )
-    ''')
-    
-    # User Sessions Table - For managing active sessions
-    cur.execute('''
-        CREATE TABLE user_sessions (
-            session_id VARCHAR(100) PRIMARY KEY,
-            user_id VARCHAR(50) NOT NULL,
-            user_type VARCHAR(20) NOT NULL CHECK(user_type IN ('student', 'parent', 'warden', 'security')),
-            ip_address VARCHAR(50),
-            user_agent TEXT,
+    ''' if is_postgres else '''
+        CREATE TABLE IF NOT EXISTS student_parent_links (
+            student_id TEXT,
+            parent_id TEXT,
+            relationship TEXT,
+            is_verified BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            expires_at TIMESTAMP NOT NULL,
-            is_active BOOLEAN DEFAULT 1
+            PRIMARY KEY (student_id, parent_id),
+            FOREIGN KEY (student_id) REFERENCES students(student_id),
+            FOREIGN KEY (parent_id) REFERENCES parents(parent_id)
         )
     ''')
-    
-    # Activity Logs Table - For audit trail
+
+    # Pending Registrations table
     cur.execute('''
-        CREATE TABLE activity_logs (
-            log_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id VARCHAR(50),
-            user_type VARCHAR(20) CHECK(user_type IN ('student', 'parent', 'warden', 'security', 'system')),
-            action VARCHAR(100) NOT NULL,
-            description TEXT,
-            ip_address VARCHAR(50),
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            metadata TEXT
+        CREATE TABLE IF NOT EXISTS pending_registrations (
+            registration_id SERIAL PRIMARY KEY,
+            user_id VARCHAR(50) NOT NULL,
+            user_type VARCHAR(20) NOT NULL,  # 'student', 'parent', 'warden', 'security'
+            name VARCHAR(100) NOT NULL,
+            email VARCHAR(100),
+            phone VARCHAR(20),
+            verification_token VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP
+        )
+    ''' if is_postgres else '''
+        CREATE TABLE IF NOT EXISTS pending_registrations (
+            registration_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            user_type TEXT NOT NULL,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            verification_token TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP
         )
     ''')
-    
-    # Insert student-parent relationships
-    cur.execute('''
-        INSERT INTO student_parent_links (student_id, parent_id) VALUES
-        ('STU001', 'PAR001'),
-        ('STU002', 'PAR002'),
-        ('STU003', 'PAR003'),
-        ('STU004', 'PAR004'),
-        ('STU005', 'PAR005')
-    ''')
-    
-    conn.commit()
-    cur.close()
-    conn.close()
-    print("Database initialized successfully!")
+
+    logger.info("✅ Database tables created successfully")
+
+def add_initial_data(cur, is_postgres):
+    """Add initial data to the database."""
+    # Only add initial data if tables are empty
+    cur.execute("SELECT COUNT(*) FROM students")
+    if cur.fetchone()[0] == 0:
+        logger.info("Adding initial data...")
+        
+        # Add a sample warden
+        cur.execute('''
+            INSERT INTO wardens (warden_id, name, password_hash, email, phone, hostel_assigned)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        ''' if is_postgres else '''
+            INSERT INTO wardens (warden_id, name, password_hash, email, phone, hostel_assigned)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', ('WARDEN001', 'Admin Warden', 
+              'pbkdf2:sha256:260000$abc123$def456...',  # Replace with hashed password
+              'warden@example.com', '9876543210', 'Boys Hostel A'))
+
+        logger.info("Added initial data successfully")
 
 if __name__ == '__main__':
-    # Run both initialization methods for compatibility
-    initialize_db()  # Simple Azure-compatible init
-    init_database()  # Full database initialization
+    logger.info("Starting database initialization...")
+    init_db()
+    logger.info("✅ Database initialization complete!")
